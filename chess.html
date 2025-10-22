@@ -125,6 +125,44 @@ body {
   background: #27272a;
 }
 
+.info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #27272a;
+  border-radius: 8px;
+  gap: 1rem;
+}
+
+.info-section {
+  flex: 1;
+}
+
+.info-label {
+  font-size: 0.75rem;
+  color: #71717a;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.info-value {
+  font-size: 0.875rem;
+  color: #fafafa;
+}
+
+.captured {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  min-height: 1.5rem;
+}
+
+.captured span {
+  font-size: 1.25rem;
+}
+
 @media (max-width: 640px) {
   .square {
     font-size: 1.5rem;
@@ -147,6 +185,17 @@ body {
   <div class="header">
     <h1 class="title">Chess</h1>
     <div class="status">White's Turn</div>
+  </div>
+  
+  <div class="info">
+    <div class="info-section">
+      <div class="info-label">Moves</div>
+      <div class="info-value" id="moveCount">0</div>
+    </div>
+    <div class="info-section">
+      <div class="info-label">Captured</div>
+      <div class="captured" id="captured"></div>
+    </div>
   </div>
   
   <div class="board"></div>
@@ -177,6 +226,8 @@ let board = JSON.parse(JSON.stringify(initialBoard));
 let currentPlayer = 'white';
 let selectedSquare = null;
 let validMoves = [];
+let moveCount = 0;
+let capturedPieces = [];
 
 function getPieceColor(piece) {
   if (!piece) return null;
@@ -316,8 +367,17 @@ function handleSquareClick(row, col) {
     const isValidMoveSquare = validMoves.some(m => m.row === row && m.col === col);
     
     if (isValidMoveSquare) {
+      const capturedPiece = board[row][col];
+      if (capturedPiece) {
+        capturedPieces.push(capturedPiece);
+        updateCaptured();
+      }
+      
       board[row][col] = board[selectedSquare.row][selectedSquare.col];
       board[selectedSquare.row][selectedSquare.col] = '';
+      
+      moveCount++;
+      updateMoveCount();
       
       currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
       updateStatus();
@@ -344,12 +404,25 @@ function updateStatus() {
   status.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s Turn`;
 }
 
+function updateMoveCount() {
+  document.getElementById('moveCount').textContent = moveCount;
+}
+
+function updateCaptured() {
+  const capturedEl = document.getElementById('captured');
+  capturedEl.innerHTML = capturedPieces.map(p => `<span>${p}</span>`).join('');
+}
+
 function resetGame() {
   board = JSON.parse(JSON.stringify(initialBoard));
   currentPlayer = 'white';
   selectedSquare = null;
   validMoves = [];
+  moveCount = 0;
+  capturedPieces = [];
   updateStatus();
+  updateMoveCount();
+  updateCaptured();
   renderBoard();
 }
 
