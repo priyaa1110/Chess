@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #18181b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: #fafafa;
+  padding: 1rem;
+}
+
+.container {
+  max-width: 600px;
+  width: 100%;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.status {
+  font-size: 0.875rem;
+  color: #a1a1aa;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0;
+  background: #27272a;
+  padding: 1rem;
+  border-radius: 8px;
+  aspect-ratio: 1;
+  max-width: 100%;
+}
+
+.square {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.square.light {
+  background: #d4d4d8;
+}
+
+.square.dark {
+  background: #71717a;
+}
+
+.square.selected {
+  background: #a1a1aa;
+}
+
+.square.valid-move {
+  position: relative;
+}
+
+.square.valid-move::after {
+  content: '';
+  position: absolute;
+  width: 30%;
+  height: 30%;
+  background: rgba(250, 250, 250, 0.3);
+  border-radius: 50%;
+}
+
+.square.valid-move.has-piece::after {
+  width: 90%;
+  height: 90%;
+  background: transparent;
+  border: 3px solid rgba(250, 250, 250, 0.4);
+  border-radius: 50%;
+}
+
+.controls {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  background: #3f3f46;
+  color: #fafafa;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn:hover {
+  background: #52525b;
+}
+
+.btn:active {
+  background: #27272a;
+}
+
+@media (max-width: 640px) {
+  .square {
+    font-size: 1.5rem;
+  }
+  
+  .board {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .square {
+    font-size: 1.25rem;
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1 class="title">Chess</h1>
+    <div class="status">White's Turn</div>
+  </div>
+  
+  <div class="board"></div>
+  
+  <div class="controls">
+    <button class="btn" onclick="resetGame()">New Game</button>
+  </div>
+</div>
+
+<script>
+const pieces = {
+  white: { king: '♔', queen: '♕', rook: '♖', bishop: '♗', knight: '♘', pawn: '♙' },
+  black: { king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟' }
+};
+
+const initialBoard = [
+  ['♜', '♞', '♝', '♛', '♚', '♝', '♞', '♜'],
+  ['♟', '♟', '♟', '♟', '♟', '♟', '♟', '♟'],
+  ['', '', '', '', '', '', '', ''],
+  ['', '', '', '', '', '', '', ''],
+  ['', '', '', '', '', '', '', ''],
+  ['', '', '', '', '', '', '', ''],
+  ['♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'],
+  ['♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖']
+];
+
+let board = JSON.parse(JSON.stringify(initialBoard));
+let currentPlayer = 'white';
+let selectedSquare = null;
+let validMoves = [];
+
+function getPieceColor(piece) {
+  if (!piece) return null;
+  const whiteSet = Object.values(pieces.white);
+  return whiteSet.includes(piece) ? 'white' : 'black';
+}
+
+function getPieceType(piece) {
+  if (!piece) return null;
+  for (const [type, symbol] of Object.entries(pieces.white)) {
+    if (symbol === piece) return type;
+  }
+  for (const [type, symbol] of Object.entries(pieces.black)) {
+    if (symbol === piece) return type;
+  }
+  return null;
+}
+
+function isValidMove(fromRow, fromCol, toRow, toCol) {
+  const piece = board[fromRow][fromCol];
+  const target = board[toRow][toCol];
+  const pieceType = getPieceType(piece);
+  const pieceColor = getPieceColor(piece);
+  
+  if (target && getPieceColor(target) === pieceColor) return false;
+  
+  const rowDiff = toRow - fromRow;
+  const colDiff = toCol - fromCol;
+  const absRowDiff = Math.abs(rowDiff);
+  const absColDiff = Math.abs(colDiff);
+  
+  switch (pieceType) {
+    case 'pawn':
+      const direction = pieceColor === 'white' ? -1 : 1;
+      const startRow = pieceColor === 'white' ? 6 : 1;
+      
+      if (colDiff === 0 && !target) {
+        if (rowDiff === direction) return true;
+        if (fromRow === startRow && rowDiff === 2 * direction && !board[fromRow + direction][fromCol]) return true;
+      }
+      
+      if (absColDiff === 1 && rowDiff === direction && target) return true;
+      return false;
+      
+    case 'rook':
+      if (rowDiff === 0 || colDiff === 0) {
+        return isPathClear(fromRow, fromCol, toRow, toCol);
+      }
+      return false;
+      
+    case 'knight':
+      return (absRowDiff === 2 && absColDiff === 1) || (absRowDiff === 1 && absColDiff === 2);
+      
+    case 'bishop':
+      if (absRowDiff === absColDiff) {
+        return isPathClear(fromRow, fromCol, toRow, toCol);
+      }
+      return false;
+      
+    case 'queen':
+      if (rowDiff === 0 || colDiff === 0 || absRowDiff === absColDiff) {
+        return isPathClear(fromRow, fromCol, toRow, toCol);
+      }
+      return false;
+      
+    case 'king':
+      return absRowDiff <= 1 && absColDiff <= 1;
+  }
+  
+  return false;
+}
+
+function isPathClear(fromRow, fromCol, toRow, toCol) {
+  const rowStep = toRow > fromRow ? 1 : toRow < fromRow ? -1 : 0;
+  const colStep = toCol > fromCol ? 1 : toCol < fromCol ? -1 : 0;
+  
+  let currentRow = fromRow + rowStep;
+  let currentCol = fromCol + colStep;
+  
+  while (currentRow !== toRow || currentCol !== toCol) {
+    if (board[currentRow][currentCol]) return false;
+    currentRow += rowStep;
+    currentCol += colStep;
+  }
+  
+  return true;
+}
+
+function getValidMoves(row, col) {
+  const moves = [];
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (isValidMove(row, col, r, c)) {
+        moves.push({ row: r, col: c });
+      }
+    }
+  }
+  return moves;
+}
+
+function renderBoard() {
+  const boardElement = document.querySelector('.board');
+  boardElement.innerHTML = '';
+  
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const square = document.createElement('div');
+      square.classList.add('square');
+      square.classList.add((row + col) % 2 === 0 ? 'light' : 'dark');
+      square.dataset.row = row;
+      square.dataset.col = col;
+      square.textContent = board[row][col];
+      
+      if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
+        square.classList.add('selected');
+      }
+      
+      const isValidMoveSquare = validMoves.some(m => m.row === row && m.col === col);
+      if (isValidMoveSquare) {
+        square.classList.add('valid-move');
+        if (board[row][col]) {
+          square.classList.add('has-piece');
+        }
+      }
+      
+      square.addEventListener('click', () => handleSquareClick(row, col));
+      boardElement.appendChild(square);
+    }
+  }
+}
+
+function handleSquareClick(row, col) {
+  const piece = board[row][col];
+  const pieceColor = getPieceColor(piece);
+  
+  if (selectedSquare) {
+    const isValidMoveSquare = validMoves.some(m => m.row === row && m.col === col);
+    
+    if (isValidMoveSquare) {
+      board[row][col] = board[selectedSquare.row][selectedSquare.col];
+      board[selectedSquare.row][selectedSquare.col] = '';
+      
+      currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
+      updateStatus();
+      
+      selectedSquare = null;
+      validMoves = [];
+    } else if (pieceColor === currentPlayer) {
+      selectedSquare = { row, col };
+      validMoves = getValidMoves(row, col);
+    } else {
+      selectedSquare = null;
+      validMoves = [];
+    }
+  } else if (pieceColor === currentPlayer) {
+    selectedSquare = { row, col };
+    validMoves = getValidMoves(row, col);
+  }
+  
+  renderBoard();
+}
+
+function updateStatus() {
+  const status = document.querySelector('.status');
+  status.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s Turn`;
+}
+
+function resetGame() {
+  board = JSON.parse(JSON.stringify(initialBoard));
+  currentPlayer = 'white';
+  selectedSquare = null;
+  validMoves = [];
+  updateStatus();
+  renderBoard();
+}
+
+renderBoard();
+</script>
+</body>
+</html>
